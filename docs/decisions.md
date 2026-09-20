@@ -114,3 +114,13 @@ Cada camada tem um estilo de teste diferente, de acordo com o que ela faz.
 - Integration: contrato HTTP completo, banco isolado por classe de teste, relógio controlado. Os testes paralelos afirmam só invariantes (saldo maior ou igual a zero, saldo igual a créditos menos débitos, nenhum 5xx), nunca contagens exatas que dependeriam de timing.
 
 Os dublês são escolhidos por intenção: builders para estado, mocks para interação. `dotnet test --filter "Category!=Integration"` roda só os rápidos.
+
+## 12. Interface web sem bibliotecas além do React
+
+O diferencial pede uma interface em React. É uma tela: saldo, formulário de movimentação e histórico.
+
+Vite + React 19 + TypeScript. `fetch` nativo com um wrapper que converte ProblemDetails em `ApiError` tipado. Estado local em um hook (`useAccount`), CSS puro. O Vite faz proxy de `/api`, então não há CORS em desenvolvimento. O fetch do histórico é cancelado quando o filtro muda antes da resposta chegar. Testes com Vitest e Testing Library mockam `fetch` na borda; o resto roda de verdade.
+
+React Query resolveria cache e revalidação, mas para uma tela com dois requests o hook manual é menor e legível. Axios não traria nada que o `fetch` não faça aqui. UI kit e Redux seriam desproporcionais para três componentes sem estado compartilhado.
+
+O front reflete o contrato de erros da API: 422 vira "Saldo insuficiente", 400 mostra as mensagens de validação, falha de rede oferece "Tentar novamente". O id da conta padrão tem fallback em código e override por `VITE_DEFAULT_ACCOUNT_ID`, o que evita versionar um `.env`. Se a tela crescer (multiconta, filtro por período), React Query seria a primeira dependência a entrar.

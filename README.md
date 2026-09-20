@@ -12,8 +12,9 @@ Solução para o desafio técnico de Engenheiro de Software .NET da act digital.
 | Persistência | EF Core 10 + SQLite (arquivo local, sem configuração) |
 | Documentação da API | OpenAPI nativo + Scalar UI |
 | Testes | xUnit, NSubstitute, FakeTimeProvider, FakeLogger, WebApplicationFactory, NetArchTest |
+| Interface (diferencial) | React 19 + TypeScript + Vite; Vitest + Testing Library |
 
-Não usei MediatR, AutoMapper nem FluentValidation. Os motivos estão em [docs/decisions.md](docs/decisions.md).
+Não usei MediatR, AutoMapper nem FluentValidation no back-end, e no front-end não há biblioteca de estado, UI kit ou cliente HTTP. Os motivos estão em [docs/decisions.md](docs/decisions.md).
 
 ## Como executar
 
@@ -27,6 +28,18 @@ dotnet run --project src/CashFlow.Api
 - Documentação interativa em `http://localhost:5013/scalar`
 - O banco `cashflow.db` é criado automaticamente na primeira execução (migrations aplicadas no boot)
 - Uma conta padrão já vem criada: `0199f4a0-0000-7000-8000-000000000001` ("Conta Empresarial")
+
+### Interface web
+
+Com a API rodando, em outro terminal (pré-requisito: Node 20 ou superior):
+
+```bash
+cd web && npm install && npm run dev
+```
+
+Abre em `http://localhost:5173`. O Vite faz proxy de `/api` para `http://localhost:5013`, então não precisa de CORS em desenvolvimento. A tela trabalha sobre a conta padrão: registra entradas e saídas, mostra o saldo e o histórico com filtro por tipo e paginação. Saldo insuficiente (422) e erros de validação (400) aparecem como mensagem no formulário.
+
+Variáveis opcionais: `VITE_API_URL` (destino do proxy) e `VITE_DEFAULT_ACCOUNT_ID` (conta exibida).
 
 ## Endpoints
 
@@ -138,6 +151,8 @@ src/
 └── CashFlow.Api             Controllers, contratos de entrada, tratamento de erros, composição do DI (Program.cs)
 tests/
 └── CashFlow.Tests           Unitários (Domain, Application), infra (SQLite real), arquitetura e integração HTTP
+web/
+└── src/                     React: api/ (cliente tipado), hooks/useAccount, components/, testes ao lado do código
 docs/
 └── decisions.md             Decisões técnicas e alternativas descartadas
 ```
@@ -191,6 +206,7 @@ dotnet test --filter "Category!=Integration"
 | Infrastructure | Conflito de concorrência real, filtros e paginação do histórico | SQLite in-memory com conexão compartilhada e migrations reais |
 | Architecture | Direção das dependências entre camadas | NetArchTest |
 | Integration | Contrato HTTP (status, ProblemDetails, enum como string), um mês de operação de uma empresa pequena, stress paralelo | WebApplicationFactory com banco isolado por classe e relógio controlado |
+| Web | Cliente HTTP (mapeamento de ProblemDetails), formulário (validação, 422), tela completa com `fetch` mockado | Vitest + Testing Library (`cd web && npm test`) |
 
 ## Decisões técnicas
 
@@ -215,4 +231,4 @@ Ficaram fora do escopo. Como cada um entraria:
 - Banco de produção. Trocar SQLite por PostgreSQL mexe só em `Infrastructure` (provider e connection string). A estratégia de concorrência não depende do banco.
 - Event sourcing. Se o histórico passar a ser a fonte da verdade, `Account` seria reconstruído a partir das transações. Hoje o saldo é materializado por performance e simplicidade.
 - Observabilidade. OpenTelemetry para traces e métricas. O `traceId` já sai nos erros.
-- Interface React. Diferencial opcional do desafio, não implementado nesta entrega.
+- Interface web. A tela atual cobre o fluxo do desafio. Multiconta, filtro por período e autenticação viriam junto com as evoluções da API.
