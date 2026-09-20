@@ -1,5 +1,7 @@
 # CashFlow
 
+[![CI](https://github.com/mihaelcosta/CashFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/mihaelcosta/CashFlow/actions/workflows/ci.yml)
+
 API para controle de movimentações de uma conta empresarial: registro de entradas e saídas, consulta de saldo e histórico. O saldo nunca fica negativo, mesmo com requisições concorrentes.
 
 Solução para o desafio técnico de Engenheiro de Software .NET da act digital.
@@ -41,7 +43,23 @@ Abre em `http://localhost:5173`. O Vite faz proxy de `/api` para `http://localho
 
 Variáveis opcionais: `VITE_API_URL` (destino do proxy) e `VITE_DEFAULT_ACCOUNT_ID` (conta exibida).
 
+### Docker
+
+Sobe API e interface sem precisar de .NET nem Node instalados:
+
+```bash
+docker compose up --build
+```
+
+- Interface em `http://localhost:5173`
+- API em `http://localhost:5013` (Scalar em `/scalar`, health check em `/health`)
+- O banco SQLite fica no volume `cashflow-data`, então os dados sobrevivem a `docker compose down`
+
+A imagem da API é multi-stage (SDK para publicar, `aspnet` para rodar), executa como usuário não-root e recebe a connection string por variável de ambiente (`Database__ConnectionString`). A imagem do front serve o build estático com nginx e faz proxy de `/api` para o container da API; o destino é configurável por `API_UPSTREAM`.
+
 ## Endpoints
+
+Há também um `GET /health` para health checks de infraestrutura.
 
 | Método | Rota | Descrição | Sucesso |
 |---|---|---|---|
@@ -192,6 +210,8 @@ Três testes cobrem isso, cada um de um ângulo:
 ```bash
 dotnet test
 ```
+
+O mesmo roda no GitHub Actions a cada push e pull request ([ci.yml](.github/workflows/ci.yml)): testes da API, lint/testes/build do front e build das duas imagens Docker com smoke test da API em container.
 
 Só os rápidos (sem subir a API):
 
