@@ -14,6 +14,7 @@ builder.Services
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
 builder.Services.AddOpenApi();
+builder.Services.AddHealthChecks();
 
 builder.Services
     .AddApplication()
@@ -32,6 +33,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 await app.RunAsync();
 
