@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test --no-build --configuration Release
+          --logger "trx;LogFileName=results.trx"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results
+          path: TestResults
+
+  web:
+    name: Web (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t cashflow-api .
+
+      - name: Build web image
+        run: docker build -t cashflow-web ./web
+
+      - name: Smoke test API container
+        run: |
+          docker run -d --name api -p 8080:8080 cashflow-api
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:8080/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/health
+          curl -fsS http://localhost:8080/api/accounts/0199f4a0-0000-7000-8000-000000000001/balance
+          docker logs api
+          docker rm -f api
